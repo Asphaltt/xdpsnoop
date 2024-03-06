@@ -64,6 +64,40 @@ func main() {
 	}
 	defer obj.Close()
 
+	if kp, err := link.Kprobe("dev_xdp_attach", obj.K_devXdpAttach, nil); err != nil {
+		log.Fatalf("Failed to attach kprobe to dev_xdp_attach: %v", err)
+	} else {
+		defer kp.Close()
+		if flags.verbose {
+			log.Printf("Attached kprobe to dev_xdp_attach")
+		}
+	}
+
+	if krp, err := link.Kretprobe("dev_xdp_attach", obj.KrDevXdpAttach, nil); err != nil {
+		log.Fatalf("Failed to attach kretprobe to dev_xdp_attach: %v", err)
+	} else {
+		defer krp.Close()
+		if flags.verbose {
+			log.Printf("Attached kretprobe to dev_xdp_attach")
+		}
+	}
+
+	// Since 5.12 [netlink: add tracepoint at
+	// NL_SET_ERR_MSG](https://github.com/torvalds/linux/commit/7e3ce05e7f650371061d0b9eec1e1cf74ed6fca0),
+	// the do_trace_netlink_extack function is used to trace the netlink extack
+	// error message. This is used to provide more context when the XDP program
+	// fails to attach to the interface.
+	if haveNetlinkExtackTracepoint() {
+		if kp, err := link.Kprobe("do_trace_netlink_extack", obj.K_doTraceNetlinkExtack, nil); err != nil {
+			log.Fatalf("Failed to attach kprobe to do_trace_netlink_extack: %v", err)
+		} else {
+			defer kp.Close()
+			if flags.verbose {
+				log.Printf("Attached kprobe to do_trace_netlink_extack")
+			}
+		}
+	}
+
 	for _, fn := range funcs {
 		if kp, err := link.Kprobe(fn, obj.K_xdpInstall, nil); err != nil {
 			log.Fatalf("Failed to attach kprobe to %s: %v", fn, err)

@@ -13,6 +13,12 @@ import (
 	"github.com/cilium/ebpf/btf"
 )
 
+func haveNetlinkExtackTracepoint() bool {
+	fpath := "/sys/kernel/debug/tracing/events/netlink/netlink_extack/format"
+	_, err := os.Stat(fpath)
+	return err == nil || !os.IsNotExist(err)
+}
+
 // getAvailableFilterFunctions return list of functions to which it is possible
 // to attach kprobes.
 func getAvailableFilterFunctions() (map[string]struct{}, error) {
